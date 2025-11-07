@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prendre les présences</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <style>
+        .scanner video {
+            max-width: 100%;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+        }
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">Prendre les présences</h1>
+            <a href="/" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Retour</a>
+        </div>
+
+        <div id="message" class="hidden p-4 mb-6 rounded" role="alert"></div>
+
+        <div class="scanner bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Scanner QR Code</h2>
+            <video id="video" autoplay class="mx-auto"></video>
+        </div>
+
+        <h2 class="text-xl font-semibold text-gray-700 mb-4">Liste des présences</h2>
+        <div class="table-container bg-white rounded-lg shadow-md">
+            <table class="min-w-full">
+                <thead class="bg-blue-600 text-white">
+                    <tr>
+                        <th class="py-3 px-4 text-left">Nom</th>
+                        <th class="py-3 px-4 text-left">Postnom</th>
+                        <th class="py-3 px-4 text-left">Prénom</th>
+                        <th class="py-3 px-4 text-left">Promotion</th>
+                        <th class="py-3 px-4 text-left">Système</th>
+                        <th class="py-3 px-4 text-left">Date de présence</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <button class="mt-6 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition" onclick="window.location.href='/api/export_presences'">Exporter en Excel</button>
+    </div>
+
+    <script>
+        let lastDetected = null;
+        let lastDetectedTime = 0;
+        const debounceInterval = 5000; // 5 secondes
+
+        async function loadPresences() {
+            try {
+                const response = await fetch('/api/presences');
+                const presences = await response.json();
+                const tbody = document.querySelector('tbody');
+                tbody.innerHTML = '';
+                presences.forEach(presence => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b hover:bg-gray-50';
+                    row.innerHTML = `
+                        <td class="py-3 px-4">${presence.nom}</td>
+                        <td class="py-3 px-4">${presence.postnom}</td>
+                        <td class="py-3 px-4">${presence.prenom}</td>
+                        <td class="py-3 px-4">${presence.promotion}</td>
+                        <td class="py-3 px-4">${presence.systeme}</td>
+                        <td class="py-3 px-4">${presence.date_presence}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                const message = document.getElementById('message');
+                message.className = 'bg-red-100 border-l-4 border-red-500 text-red-700 p-4';
+                message.textContent = 'Erreur lors du chargement des présences.';
+                message.classList.remove('hidden');
+                console.error(error);
+            }
+        }
+
+        async function startCamera() {
+            const video = document.getElementById('video');
+            const canvas = document.createElement('canvas');
+            canvas.style.display = 'none';
+            document.body.appendChild(canvas);
+            const ctx = canvas.getContext('2d');
+            const message = document.getElementById('message');
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = stream;
+                video.play();
+
+                function scan() {
+                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const code = jsQR(imageData.data, imageData.width, imageData.height);
+                        const currentTime = Date.now();
+
+                        if (code && (code.data !== lastDetected || (currentTime - lastDetectedTime) > debounceInterval)) {
+                            lastDetected = code.data;
+                            lastDetectedTime = currentTime;
+                            fetch('/api/scan_qr', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ matricule: code.data })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                message.className = data.success 
+                                    ? 'bg-green-100 border-l-4 border-green-500 text-green-700 p-4'
+                                    : 'bg-red-100 border-l-4 border-red-500 text-red-700 p-4';
+                                message.textContent = data.message;
+                                message.classList.remove('hidden');
+                                if (data.success) loadPresences();
+                            })
+                            .catch(error => {
+                                message.className = 'bg-red-100 border-l-4 border-red-500 text-red-700 p-4';
+                                message.textContent = 'Erreur lors de l\'envoi du QR code.';
+                                message.classList.remove('hidden');
+                                console.error(error);
+                            });
+                        }
+                    }
+                    requestAnimationFrame(scan);
+                }
+                scan();
+            } catch (error) {
+                message.className = 'bg-red-100 border-l-4 border-red-500 text-red-700 p-4';
+                message.textContent = 'Erreur : Impossible d\'accéder à la webcam. Vérifiez les permissions.';
+                message.classList.remove('hidden');
+                console.error(error);
+            }
+        }
+
+        window.onload = () => {
+            loadPresences();
+            startCamera();
+            setInterval(loadPresences, 5000);
+        };
+
+        window.addEventListener('beforeunload', () => {
+            const video = document.getElementById('video');
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+        });
+    </script>
+</body>
+</html>

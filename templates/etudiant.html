@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liste des étudiants</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">Liste des étudiants</h1>
+            <a href="/" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Retour</a>
+        </div>
+
+        <a href="/ajout_student" class="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition mb-6">Ajouter un étudiant</a>
+
+        <div class="table-container bg-white rounded-lg shadow-md">
+            <table class="min-w-full">
+                <thead class="bg-blue-600 text-white">
+                    <tr>
+                        <th class="py-3 px-4 text-left">Matricule</th>
+                        <th class="py-3 px-4 text-left">Nom</th>
+                        <th class="py-3 px-4 text-left">Postnom</th>
+                        <th class="py-3 px-4 text-left">Prénom</th>
+                        <th class="py-3 px-4 text-left">Sexe</th>
+                        <th class="py-3 px-4 text-left">Promotion</th>
+                        <th class="py-3 px-4 text-left">Système</th>
+                        <th class="py-3 px-4 text-left">Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <button class="mt-6 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition" onclick="window.location.href='/api/export_etudiants'">Exporter en Excel</button>
+    </div>
+
+    <script>
+        async function loadStudents() {
+            try {
+                const response = await fetch('/api/etudiants');
+                const students = await response.json();
+                const tbody = document.querySelector('tbody');
+                tbody.innerHTML = '';
+                students.forEach(student => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b hover:bg-gray-50';
+                    row.innerHTML = `
+                        <td class="py-3 px-4">${student.matricule}</td>
+                        <td class="py-3 px-4">${student.nom}</td>
+                        <td class="py-3 px-4">${student.postnom}</td>
+                        <td class="py-3 px-4">${student.prenom}</td>
+                        <td class="py-3 px-4">${student.sexe}</td>
+                        <td class="py-3 px-4">${student.promotion}</td>
+                        <td class="py-3 px-4">${student.systeme}</td>
+                        <td class="py-3 px-4">
+                            <a href="/ajout_student?matricule=${student.matricule}" class="text-blue-600 hover:underline">Modifier</a>
+                            <button onclick="deleteStudent('${student.matricule}')" class="text-red-600 hover:underline ml-2">Supprimer</button>
+                            <a href="/generer_qr?matricule=${student.matricule}" class="text-green-600 hover:underline ml-2">QR Code</a>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Erreur lors du chargement des étudiants:', error);
+            }
+        }
+
+        async function deleteStudent(matricule) {
+            if (confirm('Voulez-vous vraiment supprimer cet étudiant ?')) {
+                try {
+                    const response = await fetch(`/api/etudiant/${matricule}`, { method: 'DELETE' });
+                    const result = await response.json();
+                    if (result.success) {
+                        loadStudents();
+                    } else {
+                        alert(result.message);
+                    }
+                } catch (error) {
+                    alert('Erreur lors de la suppression de l\'étudiant.');
+                    console.error(error);
+                }
+            }
+        }
+
+        window.onload = loadStudents;
+    </script>
+</body>
+</html>

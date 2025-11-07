@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historique des présences</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">Historique des présences</h1>
+            <a href="/" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Retour</a>
+        </div>
+
+        <div class="mb-6">
+            <label for="date-filter" class="block text-gray-700 font-semibold mb-2">Sélectionner une date</label>
+            <input type="date" id="date-filter" class="border rounded px-4 py-2 w-full md:w-1/3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div class="table-container bg-white rounded-lg shadow-md">
+            <table class="min-w-full">
+                <thead class="bg-blue-600 text-white">
+                    <tr>
+                        <th class="py-3 px-4 text-left">Nom</th>
+                        <th class="py-3 px-4 text-left">Postnom</th>
+                        <th class="py-3 px-4 text-left">Prénom</th>
+                        <th class="py-3 px-4 text-left">Promotion</th>
+                        <th class="py-3 px-4 text-left">Système</th>
+                        <th class="py-3 px-4 text-left">Date de présence</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <button id="export-btn" class="mt-6 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Exporter en Excel</button>
+    </div>
+
+    <script>
+        async function loadPresences(date = '') {
+            try {
+                const url = date ? `/api/presences?date=${date}` : '/api/presences';
+                const response = await fetch(url);
+                const presences = await response.json();
+                const tbody = document.querySelector('tbody');
+                tbody.innerHTML = '';
+                presences.forEach(presence => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b hover:bg-gray-50';
+                    row.innerHTML = `
+                        <td class="py-3 px-4">${presence.nom}</td>
+                        <td class="py-3 px-4">${presence.postnom}</td>
+                        <td class="py-3 px-4">${presence.prenom}</td>
+                        <td class="py-3 px-4">${presence.promotion}</td>
+                        <td class="py-3 px-4">${presence.systeme}</td>
+                        <td class="py-3 px-4">${presence.date_presence}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Erreur lors du chargement des présences:', error);
+            }
+        }
+
+        window.onload = () => {
+            loadPresences();
+            const dateFilter = document.getElementById('date-filter');
+            dateFilter.addEventListener('change', (e) => {
+                loadPresences(e.target.value);
+                document.getElementById('export-btn').onclick = () => {
+                    window.location.href = e.target.value 
+                        ? `/api/export_presences?date=${e.target.value}` 
+                        : '/api/export_presences';
+                };
+            });
+        };
+    </script>
+</body>
+</html>

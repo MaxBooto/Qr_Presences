@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ 'Modifier un étudiant' if matricule else 'Ajouter un étudiant' }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">{{ 'Modifier un étudiant' if matricule else 'Ajouter un étudiant' }}</h1>
+            <a href="/etudiant" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Retour</a>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <form id="student-form">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="matricule" class="block text-gray-700 font-semibold mb-2">Matricule</label>
+                        <input type="text" id="matricule" value="{{ matricule }}" {{ 'readonly' if matricule else '' }} class="border rounded px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label for="nom" class="block text-gray-700 font-semibold mb-2">Nom</label>
+                        <input type="text" id="nom" class="border rounded px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label for="postnom" class="block text-gray-700 font-semibold mb-2">Postnom</label>
+                        <input type="text" id="postnom" class="border rounded px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label for="prenom" class="block text-gray-700 font-semibold mb-2">Prénom</label>
+                        <input type="text" id="prenom" class="border rounded px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label for="sexe" class="block text-gray-700 font-semibold mb-2">Sexe</label>
+                        <select id="sexe" class="border rounded px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="Masculin">Masculin</option>
+                            <option value="Féminin">Féminin</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="promotion" class="block text-gray-700 font-semibold mb-2">Promotion</label>
+                        <select id="promotion" class="border rounded px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="L1">L1</option>
+                            <option value="L2">L2</option>
+                            <option value="L3">L3</option>
+                            <option value="L4">L4</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="systeme" class="block text-gray-700 font-semibold mb-2">Système</label>
+                        <select id="systeme" disabled class="border rounded px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 opacity-50">
+                            <option value="LMD">LMD</option>
+                            <option value="AS">AS</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="email" class="block text-gray-700 font-semibold mb-2">Adresse e-mail</label>
+                        <input type="email" id="email" class="border rounded px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Entrez l'adresse e-mail">
+                    </div>
+                </div>
+                <div class="mt-6 flex space-x-4">
+                    <button type="button" onclick="generateQRCode()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Générer et Envoyer QR Code</button>
+                    <button type="submit" id="save-btn" disabled class="bg-blue-600 text-white px-4 py-2 rounded opacity-50 cursor-not-allowed hover:bg-blue-700 transition disabled:opacity-50">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let qrGenerated = false;
+
+        function updateSystemeField() {
+            const promotion = document.getElementById('promotion').value;
+            const systemeSelect = document.getElementById('systeme');
+            if (promotion === 'L2') {
+                systemeSelect.disabled = false;
+                systemeSelect.classList.remove('opacity-50');
+            } else {
+                systemeSelect.disabled = true;
+                systemeSelect.classList.add('opacity-50');
+                systemeSelect.value = 'LMD';
+            }
+        }
+
+        async function loadStudentData() {
+            const matricule = '{{ matricule }}';
+            if (matricule) {
+                try {
+                    const response = await fetch(`/api/etudiant/${matricule}`);
+                    const student = await response.json();
+                    if (student.success === false) {
+                        alert(student.message);
+                        return;
+                    }
+                    document.getElementById('nom').value = student.nom;
+                    document.getElementById('postnom').value = student.postnom;
+                    document.getElementById('prenom').value = student.prenom;
+                    document.getElementById('sexe').value = student.sexe;
+                    document.getElementById('promotion').value = student.promotion;
+                    document.getElementById('systeme').value = student.systeme;
+                    document.getElementById('email').value = student.email || '';
+                    qrGenerated = true;
+                    document.getElementById('save-btn').disabled = false;
+                    document.getElementById('save-btn').classList.remove('opacity-50', 'cursor-not-allowed');
+                    updateSystemeField();
+                } catch (error) {
+                    alert('Erreur lors du chargement des données de l\'étudiant.');
+                    console.error(error);
+                }
+            } else {
+                document.getElementById('systeme').value = 'LMD';
+            }
+        }
+
+        async function generateQRCode() {
+            const matricule = document.getElementById('matricule').value;
+            const email = document.getElementById('email').value;
+            if (!matricule || !email) {
+                alert('Veuillez entrer un matricule et une adresse e-mail valides.');
+                return;
+            }
+            try {
+                const response = await fetch('/generer_et_envoyer_qr', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ matricule, email })
+                });
+                if (response.ok) {
+                    qrGenerated = true;
+                    document.getElementById('save-btn').disabled = false;
+                    document.getElementById('save-btn').classList.remove('opacity-50', 'cursor-not-allowed');
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `qr_${matricule}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    alert('QR code envoyé à ' + email + ' et téléchargé.');
+                } else {
+                    const result = await response.json();
+                    alert(result.message);
+                }
+            } catch (error) {
+                alert('Erreur lors de la génération ou de l\'envoi du QR code.');
+                console.error(error);
+            }
+        }
+
+        document.getElementById('student-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!qrGenerated) {
+                alert('Veuillez d\'abord générer le QR code.');
+                return;
+            }
+            const matricule = document.getElementById('matricule').value;
+            const nom = document.getElementById('nom').value;
+            const postnom = document.getElementById('postnom').value;
+            const prenom = document.getElementById('prenom').value;
+            const sexe = document.getElementById('sexe').value;
+            const promotion = document.getElementById('promotion').value;
+            const systeme = document.getElementById('systeme').value;
+            const email = document.getElementById('email').value;
+
+            const method = '{{ matricule }}' ? 'PUT' : 'POST';
+            const url = '{{ matricule }}' ? `/api/etudiant/${matricule}` : '/api/etudiant';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ matricule, nom, postnom, prenom, sexe, promotion, systeme, email })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    window.location.href = '/etudiant';
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                alert('Erreur lors de l\'enregistrement de l\'étudiant.');
+                console.error(error);
+            }
+        });
+
+        document.getElementById('promotion').addEventListener('change', updateSystemeField);
+
+        window.onload = () => {
+            loadStudentData();
+            updateSystemeField();
+        };
+    </script>
+</body>
+</html>
