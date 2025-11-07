@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Gestion des Présences</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .card-hover {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-6">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">Dashboard - Gestion des Présences</h1>
+        
+        {% if message %}
+            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded" role="alert">
+                {{ message }}
+            </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Gestion des étudiants -->
+            <a href="/etudiant" class="card-hover bg-white p-6 rounded-lg shadow-md hover:shadow-lg">
+                <h2 class="text-xl font-semibold text-gray-700 mb-2">Gestion des étudiants</h2>
+                <p class="text-gray-500 mb-4">Gérer la liste des étudiants et leurs informations.</p>
+                <span class="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Gérer</span>
+            </a>
+
+            <!-- Prendre les présences -->
+            <a href="/presences" class="card-hover bg-white p-6 rounded-lg shadow-md hover:shadow-lg">
+                <h2 class="text-xl font-semibold text-gray-700 mb-2">Prendre les présences</h2>
+                <p class="text-gray-500 mb-4">Scanner les QR codes pour enregistrer les présences.</p>
+                <span class="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Scanner</span>
+            </a>
+
+            <!-- Historique des présences -->
+            <a href="/historique" class="card-hover bg-white p-6 rounded-lg shadow-md hover:shadow-lg">
+                <h2 class="text-xl font-semibold text-gray-700 mb-2">Historique des présences</h2>
+                <p class="text-gray-500 mb-4">Consulter l'historique des présences par date.</p>
+                <span class="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Consulter</span>
+            </a>
+        </div>
+    </div>
+</body>
+</html>
